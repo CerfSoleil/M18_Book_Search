@@ -2,17 +2,15 @@ import { useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import { Form, Button, Alert } from 'react-bootstrap';
 
-import { createUser } from '../utils/API';
+import { CREATE_USER } from '../utils/mutations.js';
+import client from '../apollo/apolloClient.js'; 
 import Auth from '../utils/auth';
 import type { User } from '../models/User';
 
 // biome-ignore lint/correctness/noEmptyPattern: <explanation>
 const SignupForm = ({}: { handleModalClose: () => void }) => {
-  // set initial form state
   const [userFormData, setUserFormData] = useState<User>({ username: '', email: '', password: '', savedBooks: [] });
-  // set state for form validation
   const [validated] = useState(false);
-  // set state for alert
   const [showAlert, setShowAlert] = useState(false);
 
   const handleInputChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -31,13 +29,14 @@ const SignupForm = ({}: { handleModalClose: () => void }) => {
     }
 
     try {
-      const response = await createUser(userFormData);
+      // Use Apollo Client to call the createUser mutation
+      const { data } = await client.mutate({
+        mutation: CREATE_USER,
+        variables: { userData: { username: userFormData.username, email: userFormData.email, password: userFormData.password } },
+      });
 
-      if (!response.ok) {
-        throw new Error('something went wrong!');
-      }
-
-      const { token } = await response.json();
+      // If successful, store the token
+      const { token } = data.createUser;
       Auth.login(token);
     } catch (err) {
       console.error(err);

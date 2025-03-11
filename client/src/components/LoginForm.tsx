@@ -3,7 +3,8 @@ import { useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import { Form, Button, Alert } from 'react-bootstrap';
 
-import { loginUser } from '../utils/API';
+import { LOGIN_USER } from '../utils/mutations.js';
+import client from '../apollo/apolloClient.js';  // Apollo client instance
 import Auth from '../utils/auth';
 import type { User } from '../models/User';
 
@@ -29,13 +30,14 @@ const LoginForm = ({}: { handleModalClose: () => void }) => {
     }
 
     try {
-      const response = await loginUser(userFormData);
+      // Use Apollo Client to call the loginUser mutation
+      const { data } = await client.mutate({
+        mutation: LOGIN_USER,
+        variables: { userData: { email: userFormData.email, password: userFormData.password } },
+      });
 
-      if (!response.ok) {
-        throw new Error('something went wrong!');
-      }
-
-      const { token } = await response.json();
+      // If successful, store the token
+      const { token } = data.login;
       Auth.login(token);
     } catch (err) {
       console.error(err);
