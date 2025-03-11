@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Container, Card, Button, Row, Col } from 'react-bootstrap';
-
-import { getMe, deleteBook } from '../utils/API';
+import { useQuery, useMutation } from '@apollo/client';
+import { GET_ME } from '../utils/API.js'; // Import query to get user data
+import { DELETE_BOOK } from '../utils/mutations'; // Import mutation for deleting a book
 import Auth from '../utils/auth';
 import { removeBookId } from '../utils/localStorage';
 import type { User } from '../models/User';
 
 const SavedBooks = () => {
+  // State to manage user data
   const [userData, setUserData] = useState<User>({
     username: '',
     email: '',
@@ -14,61 +16,64 @@ const SavedBooks = () => {
     savedBooks: [],
   });
 
-  // use this to determine if `useEffect()` hook needs to run again
-  const userDataLength = Object.keys(userData).length;
+  // Use Apollo's useQuery hook to fetch user data
+  const { data, loading, error } = useQuery(GET_ME, {
+    context: {
+      headers: {
+        authorization: `Bearer ${Auth.getToken()}`, // Authorization header with token
+      },
+    },
+  });
 
+  // Apollo's useMutation for deleteBook
+  const [deleteBookMutation] = useMutation(DELETE_BOOK);
+
+  // Update the userData state with the fetched data
   useEffect(() => {
-    const getUserData = async () => {
-      try {
-        const token = Auth.loggedIn() ? Auth.getToken() : null;
+    if (data && data.me) {
+      setUserData(data.me);
+    }
+  }, [data]);
 
-        if (!token) {
-          return false;
-        }
-
-        const response = await getMe(token);
-
-        if (!response.ok) {
-          throw new Error('something went wrong!');
-        }
-
-        const user = await response.json();
-        setUserData(user);
-      } catch (err) {
-        console.error(err);
-      }
-    };
-
-    getUserData();
-  }, [userDataLength]);
-
-  // create function that accepts the book's mongo _id value as param and deletes the book from the database
+  // Handle book deletion
   const handleDeleteBook = async (bookId: string) => {
     const token = Auth.loggedIn() ? Auth.getToken() : null;
-
-    if (!token) {
-      return false;
-    }
+    if (!token) return false;
 
     try {
-      const response = await deleteBook(bookId, token);
+      // Call Apollo's deleteBook mutation
+      const { data } = await deleteBookMutation({
+        variables: { bookId },
+        context: {
+          headers: {
+            authorization: `Bearer ${token}`,
+          },
+        },
+      });
 
-      if (!response.ok) {
-        throw new Error('something went wrong!');
+      if (data.deleteBook) {
+        // Remove the book from the user data after successful deletion
+        setUserData((prevState) => ({
+          ...prevState,
+          savedBooks: prevState.savedBooks.filter((book) => book.bookId !== bookId),
+        }));
+
+        // Remove book's id from localStorage
+        removeBookId(bookId);
       }
-
-      const updatedUser = await response.json();
-      setUserData(updatedUser);
-      // upon success, remove book's id from localStorage
-      removeBookId(bookId);
     } catch (err) {
-      console.error(err);
+      console.error('Error deleting book:', err);
     }
   };
 
-  // if data isn't here yet, say so
-  if (!userDataLength) {
+  // If data is loading, show loading state
+  if (loading) {
     return <h2>LOADING...</h2>;
+  }
+
+  // If there's an error fetching the data
+  if (error) {
+    return <h2>Something went wrong!</h2>;
   }
 
   return (

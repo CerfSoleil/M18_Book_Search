@@ -1,60 +1,104 @@
-import type { User } from '../models/User.js';
-import type { Book } from '../models/Book.js';
+import { gql } from '@apollo/client';
+import client from '../apollo/apolloClient.js'; 
+import { User } from '../models/User.js';
+import { Book } from '../models/Book.js';
+import { CREATE_USER, LOGIN_USER, SAVE_BOOK, DELETE_BOOK } from './mutations.js'; // Import from mutations.ts
 
-// route to get logged in user's info (needs the token)
-export const getMe = (token: string) => {
-  return fetch('/api/users/me', {
-    headers: {
-      'Content-Type': 'application/json',
-      authorization: `Bearer ${token}`,
-    },
-  });
+// Query to get the logged-in user's information (no changes here)
+export const GET_ME = gql`
+  query getMe {
+    me {
+      _id
+      username
+      email
+    }
+  }
+`;
+
+export const getMe = async (token: string) => {
+  try {
+    const result = await client.query({
+      query: GET_ME,
+      context: {
+        headers: {
+          authorization: `Bearer ${token}`,
+        },
+      },
+    });
+    return result.data.me;  // Access the user data from the response
+  } catch (err) {
+    console.error(err);
+    throw new Error('Failed to fetch user data');
+  }
 };
 
-export const createUser = (userData: User) => {
-  return fetch('/api/users', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(userData),
-  });
+// Use the imported CREATE_USER mutation here
+export const createUser = async (userData: User) => {
+  try {
+    const result = await client.mutate({
+      mutation: CREATE_USER,
+      variables: { userData },
+    });
+    return result.data.createUser;
+  } catch (err) {
+    console.error(err);
+    throw new Error('Failed to create user');
+  }
 };
 
-export const loginUser = (userData: User) => {
-  return fetch('/api/users/login', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(userData),
-  });
+// Use the imported LOGIN_USER mutation here
+export const loginUser = async (userData: User) => {
+  try {
+    const result = await client.mutate({
+      mutation: LOGIN_USER,
+      variables: { userData },
+    });
+    return result.data.login.token;  // Access the token from the response
+  } catch (err) {
+    console.error(err);
+    throw new Error('Failed to login user');
+  }
 };
 
-// save book data for a logged in user
-export const saveBook = (bookData: Book, token: string) => {
-  return fetch('/api/users', {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(bookData),
-  });
+// Use the imported SAVE_BOOK mutation here
+export const saveBook = async (bookData: Book, token: string) => {
+  try {
+    const result = await client.mutate({
+      mutation: SAVE_BOOK,
+      variables: { bookData },
+      context: {
+        headers: {
+          authorization: `Bearer ${token}`,
+        },
+      },
+    });
+    return result.data.saveBook;
+  } catch (err) {
+    console.error(err);
+    throw new Error('Failed to save book');
+  }
 };
 
-// remove saved book data for a logged in user
-export const deleteBook = (bookId: string, token: string) => {
-  return fetch(`/api/users/books/${bookId}`, {
-    method: 'DELETE',
-    headers: {
-      authorization: `Bearer ${token}`,
-    },
-  });
+// Use the imported DELETE_BOOK mutation here
+export const deleteBook = async (bookId: string, token: string) => {
+  try {
+    const result = await client.mutate({
+      mutation: DELETE_BOOK,
+      variables: { bookId },
+      context: {
+        headers: {
+          authorization: `Bearer ${token}`,
+        },
+      },
+    });
+    return result.data.deleteBook;
+  } catch (err) {
+    console.error(err);
+    throw new Error('Failed to delete book');
+  }
 };
 
-// make a search to google books api
-// https://www.googleapis.com/books/v1/volumes?q=harry+potter
+// Function to search Google Books API (no changes here)
 export const searchGoogleBooks = (query: string) => {
   return fetch(`https://www.googleapis.com/books/v1/volumes?q=${query}`);
 };
