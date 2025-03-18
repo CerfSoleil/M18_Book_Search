@@ -1,48 +1,51 @@
 import express from 'express';
-import path from 'node:path';
 import { ApolloServer } from '@apollo/server';
 import { expressMiddleware } from '@apollo/server/express4';
-import db from './config/connection.js';  // Database connection
-import { typeDefs } from './graphql/typeDefs/schemaIndex.js';  // Type definitions
-import resolvers from './graphql/resolvers/resolversIndex.js'; // Resolvers
+import path from 'path';
 import dotenv from 'dotenv';
-import { authMiddleware } from './services/auth.js';  // Import the authentication middleware
+
+import db from './config/connection.js';
+import { typeDefs } from './graphql/typeDefs/schemaIndex.js';
+import resolvers from './graphql/resolvers/resolversIndex.js';
+import { authMiddleware } from './services/auth.js';
 
 dotenv.config();
 
-const app = express();
 const PORT = process.env.PORT || 3001;
-
-// Middleware setup
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
-
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../client/build')));
-}
-
-// Initialize Apollo Server
+const app = express();
 const server = new ApolloServer({
   typeDefs,
   resolvers,
 });
 
-// Start Apollo Server and apply middleware
-const startServer = async () => {
+const startApolloServer = async () => {
   await server.start();
+
+  app.use(express.urlencoded({ extended: true }));
+  app.use(express.json());
 
   app.use(
     '/graphql',
     expressMiddleware(server, {
-      context: async ({ req }) => {
-        await authMiddleware({ req });
-      }
+      context: async ({ req }) => authMiddleware({ req }),
     })
   );
 
-  db.once('open', () => {
-    app.listen(PORT, () => console.log(`🚀 Server running at http://localhost:${PORT}/graphql`));
+  // Serve React app in production
+  if (process.env.NODE_ENV === 'production') {
+    app.use(express.static(path.join(__dirname, '../client/dist')));
+
+    app.get('*', (_req, res) => {
+      res.sendFile(path.join(__dirname, '../client/dist/index.html'));
+    });
+  }
+
+  db.on('error', console.error.bind(console, 'MongoDB connection error:'));
+
+  app.listen(PORT, () => {
+    console.log(`API server running on port ${PORT}!`);
+    console.log(`Use GraphQL at http://localhost:${PORT}/graphql`);
   });
 };
 
-startServer();
+startApolloServer();
