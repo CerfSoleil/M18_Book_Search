@@ -2,7 +2,7 @@ import { gql } from 'graphql-tag';
 
 export const bookTypeDefs = gql`
   type Book {
-    bookId: ID!
+    id: ID!
     title: String!
     authors: [String]
     description: String!
@@ -11,7 +11,7 @@ export const bookTypeDefs = gql`
   }
 
   input BookInput {
-    bookId: ID!
+    id: ID!
     title: String!
     authors: [String]
     description: String!
