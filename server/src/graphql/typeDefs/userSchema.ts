@@ -9,14 +9,20 @@ export const userTypeDefs = gql`
     savedBooks: [Book]
   }
 
+  type LoginResponse {
+  token: String!
+  user: User!
+  }
+
   type Query {
     users: [User]          # Get all users
     getSingleUser(id: ID, username: String): User # Get a single user
   }
 
   type Mutation {
-    addUser(username: String!, email: String!, password: String!): User
+    createUser(username: String!, email: String!, password: String!): User
     saveBook(userId: ID!, book: BookInput!): User
-    removeBook(userId: ID!, bookId: ID!): User
+    deleteBook(userId: ID!, bookId: ID!): User
+    login(username: String, email: String, password: String!): LoginResponse
   }
 `;
