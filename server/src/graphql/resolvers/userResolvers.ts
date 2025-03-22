@@ -29,7 +29,7 @@ const userResolvers = {
         throw new Error('Something went wrong!');
       }
 
-      const token = signToken(user.username, user.password, user._id);
+      const token = signToken(user.username, user.email, user._id);
       return { token, user };
     },
 
